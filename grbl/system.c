@@ -20,6 +20,12 @@
 
 #include "grbl.h"
 
+#ifdef ENABLE_CONTROL_RESET_PIN_DEBOUNCE
+  #ifdef ENABLE_SOFTWARE_DEBOUNCE
+    #error "ENABLE_CONTROL_RESET_PIN_DEBOUNCE is not compatible with ENABLE_SOFTWARE_DEBOUNCE."
+  #endif
+#endif
+
 
 void system_init()
 {
@@ -31,6 +37,12 @@ void system_init()
   #endif
   CONTROL_PCMSK |= CONTROL_MASK;  // Enable specific pins of the Pin Change Interrupt
   PCICR |= (1 << CONTROL_INT);   // Enable Pin Change Interrupt
+
+  #ifdef ENABLE_CONTROL_RESET_PIN_DEBOUNCE
+    MCUSR &= ~(1<<WDRF);
+    WDTCSR |= (1<<WDCE) | (1<<WDE);
+    WDTCSR = (1<<WDP0); // Set time-out at ~32msec.
+  #endif
 }
 
 
@@ -66,7 +78,11 @@ ISR(CONTROL_INT_vect)
   uint8_t pin = system_control_get_state();
   if (pin) {
     if (bit_istrue(pin,CONTROL_PIN_INDEX_RESET)) {
-      mc_reset();
+      #ifdef ENABLE_CONTROL_RESET_PIN_DEBOUNCE
+        if (!(WDTCSR & (1<<WDIE))) { WDTCSR |= (1<<WDIE); }
+      #else
+        mc_reset();
+      #endif
     }
     if (bit_istrue(pin,CONTROL_PIN_INDEX_CYCLE_START)) {
       bit_true(sys_rt_exec_state, EXEC_CYCLE_START);
@@ -81,6 +97,16 @@ ISR(CONTROL_INT_vect)
     }
   }
 }
+
+#ifdef ENABLE_CONTROL_RESET_PIN_DEBOUNCE
+ISR(WDT_vect)
+{
+  WDTCSR &= ~(1<<WDIE); // Disable watchdog timer.
+  if (bit_istrue(system_control_get_state(),CONTROL_PIN_INDEX_RESET)) {
+    mc_reset();
+  }
+}
+#endif
 
 
 // Returns if safety door is ajar(T) or closed(F), based on pin state.
