@@ -199,6 +199,8 @@
 // This rejects short EMI spikes without blocking the stepper ISR, at the cost of a short
 // delay before a real RESET button press is honored.
 #define ENABLE_CONTROL_RESET_PIN_DEBOUNCE
+// Watchdog timeout selection for RESET pin debounce. Default is ~125 msec.
+#define CONTROL_RESET_PIN_DEBOUNCE_WDT_BITS ((1<<WDP1)|(1<<WDP0))
 
 // Inverts select limit pin states based on the following mask. This effects all limit pin functions,
 // such as hard limits and homing. However, this is different from overall invert limits setting.
