@@ -208,7 +208,9 @@ void limits_go_home(uint8_t cycle_mask)
   bool approach = true;
   float homing_rate = settings.homing_seek_rate;
   #ifdef ENABLE_HOMING_DISTANCE_REPORT
-    bool hom_dist_saved = false;
+    int32_t homing_steps[N_AXIS];
+    uint8_t homing_steps_saved = 0;
+    memset(homing_steps, 0, sizeof(homing_steps));
   #endif
 
   uint8_t limit_state, axislock, n_active_axis;
@@ -349,18 +351,17 @@ void limits_go_home(uint8_t cycle_mask)
       } while (STEP_MASK & axislock);
     #endif
 
-    // After first approach: sys_position contains steps traveled from manual position to limit switch.
-    // Capture raw step counts (not converted to mm yet) to debug if axes are actually moving.
-    // Only save axes active in this cycle; other axes may hold stale values from previous cycles.
+    // Save the first approach steps for each axis in this homing cycle.
+    // The stepper ISR updates sys_position while the move is running, so this
+    // snapshot is the physical travel to the homing switch for the active axes.
     #ifdef ENABLE_HOMING_DISTANCE_REPORT
-    if (approach && !hom_dist_saved) {
+    if (approach) {
       for (idx=0; idx<N_AXIS; idx++) {
-        if (bit_istrue(cycle_mask, bit(idx))) {
-          // Store raw step count as float; at (0,0,0) post-homing, these represent distance to home
-          sys.homing_distance[idx] = (float)sys_position[idx];
+        if (bit_istrue(cycle_mask, bit(idx)) && bit_isfalse(homing_steps_saved, bit(idx))) {
+          homing_steps[idx] = sys_position[idx];
+          homing_steps_saved |= bit(idx);
         }
       }
-      hom_dist_saved = true;
     }
     #endif
 
@@ -420,6 +421,16 @@ void limits_go_home(uint8_t cycle_mask)
 
     }
   }
+
+  #ifdef ENABLE_HOMING_DISTANCE_REPORT
+  for (idx=0; idx<N_AXIS; idx++) {
+    if (bit_istrue(cycle_mask, bit(idx))) {
+      float homing_mpos = system_convert_axis_steps_to_mpos(homing_steps, idx);
+      sys.homing_distance[idx] = (homing_mpos < 0.0f) ? -homing_mpos : homing_mpos;
+    }
+  }
+  #endif
+
   sys.step_control = STEP_CONTROL_NORMAL_OP; // Return step control to normal operation.
 }
 
