@@ -207,27 +207,11 @@ void limits_go_home(uint8_t cycle_mask)
   // Set search mode with approach at seek rate to quickly engage the specified cycle_mask limit switches.
   bool approach = true;
   float homing_rate = settings.homing_seek_rate;
+  #ifdef ENABLE_HOMING_DISTANCE_REPORT
+    bool hom_dist_saved = false;
+  #endif
 
   uint8_t limit_state, axislock, n_active_axis;
-
-  // Capture pre-homing position (requires motor-jogged positioning; stale after manual grab)
-  #ifdef ENABLE_HOMING_DISTANCE_REPORT
-  {
-    float pre_home[N_AXIS];
-    system_convert_array_steps_to_mpos(pre_home, sys_position);
-    for (idx=0; idx<N_AXIS; idx++) { sys.homing_distance[idx] = pre_home[idx]; }
-  }
-  #endif
-
-
-  // Capture pre-homing position (requires motor-jogged positioning; stale after manual grab)
-  #ifdef ENABLE_HOMING_DISTANCE_REPORT
-  {
-    float pre_home[N_AXIS];
-    system_convert_array_steps_to_mpos(pre_home, sys_position);
-    for (idx=0; idx<N_AXIS; idx++) { sys.homing_distance[idx] = pre_home[idx]; }
-  }
-  #endif
 
   do {
 
@@ -367,6 +351,19 @@ void limits_go_home(uint8_t cycle_mask)
 
     st_reset(); // Immediately force kill steppers and reset step segment buffer.
     delay_ms(settings.homing_debounce_delay); // Delay to allow transient dynamics to dissipate.
+
+    // After first approach: sys_position[idx] = steps traveled from manual position to limit switch.
+    // This is the true physical distance regardless of pre-homing position tracking.
+    #ifdef ENABLE_HOMING_DISTANCE_REPORT
+    if (approach && !hom_dist_saved) {
+      float dist[N_AXIS];
+      system_convert_array_steps_to_mpos(dist, sys_position);
+      for (idx=0; idx<N_AXIS; idx++) {
+        sys.homing_distance[idx] = (dist[idx] < 0.0f) ? -dist[idx] : dist[idx];
+      }
+      hom_dist_saved = true;
+    }
+    #endif
 
     // Reverse direction and reset homing rate for locate cycle(s).
     approach = !approach;
