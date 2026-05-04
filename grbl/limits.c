@@ -353,13 +353,15 @@ void limits_go_home(uint8_t cycle_mask)
     delay_ms(settings.homing_debounce_delay); // Delay to allow transient dynamics to dissipate.
 
     // After first approach: sys_position[idx] = steps traveled from manual position to limit switch.
-    // This is the true physical distance regardless of pre-homing position tracking.
+    // Only save axes active in this cycle; other axes may hold stale values from previous cycles.
     #ifdef ENABLE_HOMING_DISTANCE_REPORT
     if (approach && !hom_dist_saved) {
       float dist[N_AXIS];
       system_convert_array_steps_to_mpos(dist, sys_position);
       for (idx=0; idx<N_AXIS; idx++) {
-        sys.homing_distance[idx] = (dist[idx] < 0.0f) ? -dist[idx] : dist[idx];
+        if (bit_istrue(cycle_mask, bit(idx))) {
+          sys.homing_distance[idx] = (dist[idx] < 0.0f) ? -dist[idx] : dist[idx];
+        }
       }
       hom_dist_saved = true;
     }
