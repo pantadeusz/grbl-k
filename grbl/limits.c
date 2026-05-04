@@ -401,6 +401,18 @@ void limits_go_home(uint8_t cycle_mask)
 
     }
   }
+  
+  // Capture homing distance for status reporting (signed: preserves direction)
+  #ifdef ENABLE_HOMING_DISTANCE_REPORT
+  {
+    float home_position[N_AXIS];
+    system_convert_array_steps_to_mpos(home_position, sys_position);
+    for (idx=0; idx<N_AXIS; idx++) {
+      sys.homing_distance[idx] = home_position[idx];
+    }
+  }
+  #endif
+  
   sys.step_control = STEP_CONTROL_NORMAL_OP; // Return step control to normal operation.
 }
 
