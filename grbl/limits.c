@@ -214,7 +214,6 @@ void limits_go_home(uint8_t cycle_mask)
   #endif
 
   uint8_t limit_state, axislock, n_active_axis;
-
   do {
 
     system_convert_array_steps_to_mpos(target,sys_position);
@@ -357,8 +356,6 @@ void limits_go_home(uint8_t cycle_mask)
     #else
       } while (STEP_MASK & axislock);
     #endif
-
-
 
     st_reset(); // Immediately force kill steppers and reset step segment buffer.
     delay_ms(settings.homing_debounce_delay); // Delay to allow transient dynamics to dissipate.
