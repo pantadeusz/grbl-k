@@ -209,6 +209,26 @@ void limits_go_home(uint8_t cycle_mask)
   float homing_rate = settings.homing_seek_rate;
 
   uint8_t limit_state, axislock, n_active_axis;
+
+  // Capture pre-homing position (requires motor-jogged positioning; stale after manual grab)
+  #ifdef ENABLE_HOMING_DISTANCE_REPORT
+  {
+    float pre_home[N_AXIS];
+    system_convert_array_steps_to_mpos(pre_home, sys_position);
+    for (idx=0; idx<N_AXIS; idx++) { sys.homing_distance[idx] = pre_home[idx]; }
+  }
+  #endif
+
+
+  // Capture pre-homing position (requires motor-jogged positioning; stale after manual grab)
+  #ifdef ENABLE_HOMING_DISTANCE_REPORT
+  {
+    float pre_home[N_AXIS];
+    system_convert_array_steps_to_mpos(pre_home, sys_position);
+    for (idx=0; idx<N_AXIS; idx++) { sys.homing_distance[idx] = pre_home[idx]; }
+  }
+  #endif
+
   do {
 
     system_convert_array_steps_to_mpos(target,sys_position);
@@ -392,29 +412,7 @@ void limits_go_home(uint8_t cycle_mask)
           int32_t off_axis_position = system_convert_corexy_to_x_axis_steps(sys_position);
           sys_position[A_MOTOR] = off_axis_position + set_axis_position;
           sys_position[B_MOTOR] = off_axis_position - set_axis_position;
-        } else {
-          sys_position[idx] = set_axis_position;
-        }
-      #else
-        sys_position[idx] = set_axis_position;
-      #endif
-
-    }
-  }
   
-  // Capture homing distance for status reporting (signed: preserves direction)
-  #ifdef ENABLE_HOMING_DISTANCE_REPORT
-  {
-    float home_position[N_AXIS];
-    system_convert_array_steps_to_mpos(home_position, sys_position);
-    for (idx=0; idx<N_AXIS; idx++) {
-      sys.homing_distance[idx] = home_position[idx];
-    }
-  }
-  #endif
-  
-  sys.step_control = STEP_CONTROL_NORMAL_OP; // Return step control to normal operation.
-}
 
 
 // Performs a soft limit check. Called from mc_line() only. Assumes the machine has been homed,
