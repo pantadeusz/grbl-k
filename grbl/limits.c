@@ -409,7 +409,17 @@ void limits_go_home(uint8_t cycle_mask)
           int32_t off_axis_position = system_convert_corexy_to_x_axis_steps(sys_position);
           sys_position[A_MOTOR] = off_axis_position + set_axis_position;
           sys_position[B_MOTOR] = off_axis_position - set_axis_position;
-  
+        } else {
+          sys_position[idx] = set_axis_position;
+        }
+      #else
+        sys_position[idx] = set_axis_position;
+      #endif
+
+    }
+  }
+  sys.step_control = STEP_CONTROL_NORMAL_OP; // Return step control to normal operation.
+}
 
 
 // Performs a soft limit check. Called from mc_line() only. Assumes the machine has been homed,
