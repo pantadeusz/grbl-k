@@ -279,6 +279,13 @@ void limits_go_home(uint8_t cycle_mask)
         for (idx=0; idx<N_AXIS; idx++) {
           if (axislock & step_pin[idx]) {
             if (limit_state & (1 << idx)) {
+              // Capture this axis's travel distance at the exact moment it hits the limit switch.
+              #ifdef ENABLE_HOMING_DISTANCE_REPORT
+              if (bit_istrue(cycle_mask, bit(idx)) && bit_isfalse(homing_steps_saved, bit(idx))) {
+                homing_steps[idx] = sys_position[idx];
+                homing_steps_saved |= bit(idx);
+              }
+              #endif
               #ifdef COREXY
                 if (idx==Z_AXIS) { axislock &= ~(step_pin[Z_AXIS]); }
                 else { axislock &= ~(step_pin[A_MOTOR]|step_pin[B_MOTOR]); }
@@ -351,19 +358,7 @@ void limits_go_home(uint8_t cycle_mask)
       } while (STEP_MASK & axislock);
     #endif
 
-    // Save the first approach steps for each axis in this homing cycle.
-    // The stepper ISR updates sys_position while the move is running, so this
-    // snapshot is the physical travel to the homing switch for the active axes.
-    #ifdef ENABLE_HOMING_DISTANCE_REPORT
-    if (approach) {
-      for (idx=0; idx<N_AXIS; idx++) {
-        if (bit_istrue(cycle_mask, bit(idx)) && bit_isfalse(homing_steps_saved, bit(idx))) {
-          homing_steps[idx] = sys_position[idx];
-          homing_steps_saved |= bit(idx);
-        }
-      }
-    }
-    #endif
+
 
     st_reset(); // Immediately force kill steppers and reset step segment buffer.
     delay_ms(settings.homing_debounce_delay); // Delay to allow transient dynamics to dissipate.
