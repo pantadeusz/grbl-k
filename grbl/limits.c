@@ -349,11 +349,9 @@ void limits_go_home(uint8_t cycle_mask)
       } while (STEP_MASK & axislock);
     #endif
 
-    st_reset(); // Immediately force kill steppers and reset step segment buffer.
-    delay_ms(settings.homing_debounce_delay); // Delay to allow transient dynamics to dissipate.
-
     // After first approach: sys_position contains steps traveled from manual position to limit switch.
-    // Use per-axis conversion to handle cartesian and COREXY machines correctly.
+    // Capture BEFORE st_reset() in case it clears the values.
+    // Use per-axis conversion to handle different machine types correctly.
     // Only save axes active in this cycle; other axes may hold stale values from previous cycles.
     #ifdef ENABLE_HOMING_DISTANCE_REPORT
     if (approach && !hom_dist_saved) {
@@ -366,6 +364,9 @@ void limits_go_home(uint8_t cycle_mask)
       hom_dist_saved = true;
     }
     #endif
+
+    st_reset(); // Immediately force kill steppers and reset step segment buffer.
+    delay_ms(settings.homing_debounce_delay); // Delay to allow transient dynamics to dissipate.
 
     // Reverse direction and reset homing rate for locate cycle(s).
     approach = !approach;
