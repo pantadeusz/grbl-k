@@ -350,15 +350,14 @@ void limits_go_home(uint8_t cycle_mask)
     #endif
 
     // After first approach: sys_position contains steps traveled from manual position to limit switch.
-    // Capture BEFORE st_reset() in case it clears the values.
-    // Use per-axis conversion to handle different machine types correctly.
+    // Capture raw step counts (not converted to mm yet) to debug if axes are actually moving.
     // Only save axes active in this cycle; other axes may hold stale values from previous cycles.
     #ifdef ENABLE_HOMING_DISTANCE_REPORT
     if (approach && !hom_dist_saved) {
       for (idx=0; idx<N_AXIS; idx++) {
         if (bit_istrue(cycle_mask, bit(idx))) {
-          float dist = system_convert_axis_steps_to_mpos(sys_position, idx);
-          sys.homing_distance[idx] = (dist < 0.0f) ? -dist : dist;
+          // Store raw step count as float; at (0,0,0) post-homing, these represent distance to home
+          sys.homing_distance[idx] = (float)sys_position[idx];
         }
       }
       hom_dist_saved = true;
